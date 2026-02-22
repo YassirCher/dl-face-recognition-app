@@ -28,19 +28,23 @@ The inference engine features real-time face detection (via MediaPipe/OpenCV) an
 ### 📊 Comprehensive Analysis Dashboard
 The integrated dashboard provides deep-dive analytics for all 90 models, allowing for side-by-side comparison of performance metrics and training health.
 
-````carousel
+#### Analysis Overview
 ![Analysis Overview](screenshots/analysis%20page%20part%201.png)
-<!-- slide -->
+
+#### Model Rankings
 ![Model Rankings](screenshots/analysis%20page%20part%202.png)
-<!-- slide -->
+
+#### Efficiency Frontier
 ![Efficiency Frontier](screenshots/analysis%20page%20part%203.png)
-<!-- slide -->
+
+#### Backbone Stability
 ![Backbone Stability](screenshots/analysis%20page%20part%204.png)
-<!-- slide -->
+
+#### Neural vs Classical Comparison
 ![Neural vs Classical](screenshots/analysis%20page%20part%205.png)
-<!-- slide -->
+
+#### Performance Heatmap
 ![Performance Heatmap](screenshots/analysis%20page%20part%206.png)
-````
 
 ## ✨ Key Features
 - **Real-time Inference:** Process live video or uploaded files with on-the-fly model switching.
