@@ -44,5 +44,4 @@ uploads/*
 Thumbs.db
 
 # Project Specific
-# Allow screenshots to be tracked
-screenshots/
+# Ensure screenshots directory is tracked
