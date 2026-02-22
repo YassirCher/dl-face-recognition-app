@@ -44,5 +44,5 @@ uploads/*
 Thumbs.db
 
 # Project Specific
-screenshots/*.png
-!screenshots/.gitkeep
+# Allow screenshots to be tracked
+screenshots/
