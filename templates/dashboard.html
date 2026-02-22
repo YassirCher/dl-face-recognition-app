@@ -1,0 +1,974 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6 animate-fade-in">
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Analytics Dashboard</h1>
+            <p class="text-gray-500 mt-1">Comprehensive model performance insights</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500">Last updated:</span>
+            <span id="lastUpdated" class="text-sm text-gray-400 font-mono">--</span>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <div class="stat-value text-cyan" id="totalModels">--</div>
+            <div class="stat-label">Total Models</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-green" id="avgAccuracy">--</div>
+            <div class="stat-label">Avg Accuracy</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-purple" id="avgF1">--</div>
+            <div class="stat-label">Avg F1 Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-amber" id="bestModel">--</div>
+            <div class="stat-label">Best Model</div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Accuracy Chart -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-cyan"></span>
+                Test Accuracy by Model
+            </h3>
+            <div class="chart-container">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- F1 Score Chart -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-purple"></span>
+                F1 Score by Model
+            </h3>
+            <div class="chart-container">
+                <canvas id="f1Chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Training Health -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="stethoscope" class="w-5 h-5 text-red-400"></i>
+                Training Health (Overfitting & Stability)
+            </h3>
+            <div class="overflow-x-auto max-h-64">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b border-gray-700/50">
+                            <th class="pb-2 text-left">Model</th>
+                            <th class="pb-2 text-right">Overfit</th>
+                            <th class="pb-2 text-right">Stability</th>
+                        </tr>
+                    </thead>
+                    <tbody id="healthBody" class="text-gray-300">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Backbone Comparison Radar -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="radar" class="w-5 h-5 text-teal-400"></i>
+                Backbone Comparison (Average)
+            </h3>
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Training Time -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-green"></span>
+                Training Time (seconds)
+            </h3>
+            <div class="chart-container">
+                <canvas id="timeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top-5 vs Top-1 -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="layers" class="w-4 h-4 text-teal-400"></i>
+                Top-1 vs Top-5 Accuracy
+            </h3>
+            <div class="chart-container">
+                <canvas id="top5Chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ NEW ANALYSIS SECTIONS ═══════ -->
+
+    <!-- Neural vs Classical Comparison -->
+    <div class="glass-panel rounded-xl p-6">
+        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <i data-lucide="split" class="w-5 h-5 text-orange-400"></i>
+            Neural vs Classical Classifiers
+        </h3>
+        <div class="chart-container" style="height: 260px;">
+            <canvas id="neuralVsClassicalChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Convergence & Efficiency Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Convergence Speed -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="timer" class="w-5 h-5 text-yellow-400"></i>
+                Convergence Speed
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="chart-container" style="height: 220px;">
+                    <canvas id="convergenceDoughnut"></canvas>
+                </div>
+                <div class="overflow-y-auto max-h-56 text-sm">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-gray-500 border-b border-gray-700/50">
+                                <th class="pb-2 text-left">Model</th>
+                                <th class="pb-2 text-right">Best Ep.</th>
+                                <th class="pb-2 text-right">Rate</th>
+                                <th class="pb-2 text-right">Plateau Δ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="convergenceBody" class="text-gray-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Efficiency Frontier -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+                Efficiency Frontier (Time vs Accuracy)
+            </h3>
+            <div class="chart-container" style="height: 260px;">
+                <canvas id="efficiencyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ NEW: Backbone Analysis ═══════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Backbone Stability -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="activity" class="w-5 h-5 text-pink-400"></i>
+                Backbone Stability (Distribution)
+            </h3>
+            <div class="chart-container" style="height: 300px;">
+                <canvas id="backboneStabilityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="grid" class="w-5 h-5 text-indigo-400"></i>
+                Performance Heatmap
+            </h3>
+            <div id="heatmapContainer" class="w-full h-[300px] overflow-auto custom-scrollbar">
+                <!-- Grid generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Accuracy vs F1 Correlation -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="scatter-chart" class="w-5 h-5 text-blue-400"></i>
+                Accuracy vs F1 Correlation
+            </h3>
+            <div class="chart-container" style="height: 280px;">
+                <canvas id="accVsF1Chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Model Rankings -->
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+                Model Rankings
+            </h3>
+            <div class="overflow-x-auto max-h-72">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b border-gray-700/50">
+                            <th class="pb-2 text-left">Model</th>
+                            <th class="pb-2 text-center">Acc</th>
+                            <th class="pb-2 text-center">F1</th>
+                            <th class="pb-2 text-center">AUC</th>
+                            <th class="pb-2 text-center">Speed</th>
+                            <th class="pb-2 text-right">Avg</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rankingsBody" class="text-gray-300"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Training Details -->
+    <div class="glass-panel rounded-xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="activity" class="w-5 h-5 text-cyan"></i>
+                Training Curves
+            </h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <select id="backboneSelect" class="w-48">
+                    <option value="" disabled selected>Select Backbone</option>
+                </select>
+                <select id="classifierSelect" class="w-48" disabled>
+                    <option value="" disabled selected>Select Classifier</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-gray-900/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-red mb-3">Loss Over Epochs</h4>
+                <div class="chart-container h-56">
+                    <canvas id="lossChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-gray-900/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-green mb-3">Accuracy Over Epochs</h4>
+                <div class="chart-container h-56">
+                    <canvas id="accuracyHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Metrics Table -->
+    <div class="glass-panel rounded-xl p-6 overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="table" class="w-5 h-5 text-purple"></i>
+                Detailed Metrics
+            </h3>
+            <div class="flex flex-wrap items-center gap-3">
+                <select id="metricsBackboneFilter" class="w-44 text-sm">
+                    <option value="all">All Backbones</option>
+                </select>
+                <select id="metricsClassifierFilter" class="w-44 text-sm">
+                    <option value="all">All Classifiers</option>
+                </select>
+                <select id="metricsPerPage" class="w-20 text-sm">
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Backbone</th>
+                        <th>Classifier</th>
+                        <th>Accuracy</th>
+                        <th>Top-5</th>
+                        <th>F1</th>
+                        <th>AUC-ROC</th>
+                        <th>Time (s)</th>
+                    </tr>
+                </thead>
+                <tbody id="metricsBody">
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-4 text-sm">
+            <span id="metricsInfo" class="text-gray-500"></span>
+            <div class="flex items-center gap-1" id="metricsPagination"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+
+        let rawDataGlobal = [];
+        let lossChartInstance = null;
+        let accHistoryChartInstance = null;
+
+        // Gradient generator
+        function createGradient(ctx, color1, color2) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            return gradient;
+        }
+
+        fetch('/api/analytics')
+            .then(response => response.json())
+            .then(data => {
+                rawDataGlobal = data.raw_data;
+                updateSummaryStats(data);
+                renderCharts(data);
+                renderNewAnalysis(data);
+                renderTable(data);
+                populateModelSelect(data.model_names);
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+            })
+            .catch(err => console.error('Error loading analytics:', err));
+
+        function updateSummaryStats(data) {
+            document.getElementById('totalModels').textContent = data.model_names.length;
+            const avgAcc = data.accuracies.reduce((a, b) => a + b, 0) / data.accuracies.length;
+            document.getElementById('avgAccuracy').textContent = avgAcc.toFixed(1) + '%';
+            const avgF1 = data.f1_scores.reduce((a, b) => a + b, 0) / data.f1_scores.length;
+            document.getElementById('avgF1').textContent = (avgF1 * 100).toFixed(1) + '%';
+
+            const maxAccIdx = data.accuracies.indexOf(Math.max(...data.accuracies));
+            document.getElementById('bestModel').textContent = data.model_names[maxAccIdx].split('_')[0];
+        }
+
+        function populateModelSelect(modelNames) {
+            const backboneSelect = document.getElementById('backboneSelect');
+            const classifierSelect = document.getElementById('classifierSelect');
+
+            // Build backbone -> classifiers map from rawDataGlobal
+            const backboneMap = {};
+            rawDataGlobal.forEach(r => {
+                const bb = r.backbone;
+                const cl = r.classifier;
+                if (!backboneMap[bb]) backboneMap[bb] = new Set();
+                backboneMap[bb].add(cl);
+            });
+
+            // Populate backbone dropdown
+            Object.keys(backboneMap).sort().forEach(bb => {
+                const option = document.createElement('option');
+                option.value = bb;
+                option.textContent = bb;
+                backboneSelect.appendChild(option);
+            });
+
+            // When backbone changes, populate classifiers
+            backboneSelect.addEventListener('change', () => {
+                const bb = backboneSelect.value;
+                classifierSelect.innerHTML = '<option value="" disabled selected>Select Classifier</option>';
+                classifierSelect.disabled = false;
+
+                const classifiers = [...backboneMap[bb]].sort();
+                classifiers.forEach(cl => {
+                    const option = document.createElement('option');
+                    option.value = cl;
+                    option.textContent = cl;
+                    classifierSelect.appendChild(option);
+                });
+
+                // Auto-select first classifier
+                if (classifiers.length > 0) {
+                    classifierSelect.value = classifiers[0];
+                    showTrainingForSelection(bb, classifiers[0]);
+                }
+            });
+
+            // When classifier changes, show training curves
+            classifierSelect.addEventListener('change', () => {
+                showTrainingForSelection(backboneSelect.value, classifierSelect.value);
+            });
+
+            function showTrainingForSelection(bb, cl) {
+                const modelName = bb + '_' + cl;
+                const selectedModel = rawDataGlobal.find(r => r.model_name === modelName);
+                if (selectedModel) renderTrainingCharts(selectedModel);
+            }
+
+            // Auto-select first backbone on load
+            const firstBB = Object.keys(backboneMap).sort()[0];
+            if (firstBB) {
+                backboneSelect.value = firstBB;
+                backboneSelect.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function renderTrainingCharts(modelData) {
+            const ctxLoss = document.getElementById('lossChart').getContext('2d');
+            const ctxAcc = document.getElementById('accuracyHistoryChart').getContext('2d');
+
+            if (lossChartInstance) lossChartInstance.destroy();
+            if (accHistoryChartInstance) accHistoryChartInstance.destroy();
+
+            if (!modelData.backbone_training) return;
+
+            const epochs = Array.from({ length: modelData.epochs }, (_, i) => i + 1);
+            const td = modelData.backbone_training;
+
+            lossChartInstance = new Chart(ctxLoss, {
+                type: 'line',
+                data: {
+                    labels: epochs,
+                    datasets: [
+                        { label: 'Train', data: td.train_loss, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, fill: true },
+                        { label: 'Val', data: td.val_loss, borderColor: '#f87171', borderDash: [5, 5], tension: 0.4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } }
+            });
+
+            accHistoryChartInstance = new Chart(ctxAcc, {
+                type: 'line',
+                data: {
+                    labels: epochs,
+                    datasets: [
+                        { label: 'Train', data: td.train_accuracy, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.4, fill: true },
+                        { label: 'Val', data: td.val_accuracy, borderColor: '#4ade80', borderDash: [5, 5], tension: 0.4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } }
+            });
+        }
+
+        function renderCharts(data) {
+            const chartOpts = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                    x: { grid: { display: false }, ticks: { color: '#64748b', maxRotation: 45, minRotation: 45 } }
+                }
+            };
+
+            // Accuracy
+            const ctxAcc = document.getElementById('accuracyChart').getContext('2d');
+            new Chart(ctxAcc, {
+                type: 'bar',
+                data: { labels: data.model_names, datasets: [{ data: data.accuracies, backgroundColor: createGradient(ctxAcc, 'rgba(0,245,255,0.8)', 'rgba(0,245,255,0.2)'), borderRadius: 6 }] },
+                options: chartOpts
+            });
+
+            // F1
+            const ctxF1 = document.getElementById('f1Chart').getContext('2d');
+            new Chart(ctxF1, {
+                type: 'bar',
+                data: { labels: data.model_names, datasets: [{ data: data.f1_scores, backgroundColor: createGradient(ctxF1, 'rgba(168,85,247,0.8)', 'rgba(168,85,247,0.2)'), borderRadius: 6 }] },
+                options: { ...chartOpts, scales: { ...chartOpts.scales, y: { ...chartOpts.scales.y, max: 1.0 } } }
+            });
+
+            // Time
+            const ctxTime = document.getElementById('timeChart').getContext('2d');
+            new Chart(ctxTime, {
+                type: 'line',
+                data: { labels: data.model_names, datasets: [{ data: data.training_times, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.4 }] },
+                options: { ...chartOpts, scales: { ...chartOpts.scales, y: { ...chartOpts.scales.y, max: undefined } } }
+            });
+
+            // Radar Chart (Backbones)
+            const backbones = Object.keys(data.backbone_means);
+            const radarData = {
+                labels: ['Accuracy', 'F1 Score', 'AUC-ROC', 'Speed (Inv Time)'],
+                datasets: backbones.map((bb, i) => {
+                    const stats = data.backbone_means[bb];
+                    // Normalize time for radar (inverse, max 1000s assumption)
+                    const speedScore = Math.max(0, (1 - stats.avg_time / 1000));
+
+                    const colors = [
+                        'rgba(249, 115, 22, 1)',  // Orange
+                        'rgba(59, 130, 246, 1)',  // Blue
+                        'rgba(168, 85, 247, 1)'   // Purple
+                    ];
+                    return {
+                        label: bb,
+                        data: [stats.avg_accuracy / 100, stats.avg_f1, stats.avg_auc, speedScore],
+                        borderColor: colors[i % colors.length],
+                        backgroundColor: colors[i % colors.length].replace('1)', '0.2)'),
+                        fill: true
+                    };
+                })
+            };
+
+            new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: radarData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#9ca3af' },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: true, position: 'bottom', labels: { color: '#9ca3af' } } }
+                }
+            });
+
+            // Top-5
+            new Chart(document.getElementById('top5Chart'), {
+                type: 'bar',
+                data: { labels: data.model_names, datasets: [{ label: 'Top-1', data: data.accuracies, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 4 }, { label: 'Top-5', data: data.top5_accuracies, backgroundColor: 'rgba(20,184,166,0.7)', borderRadius: 4 }] },
+                options: { ...chartOpts, plugins: { legend: { display: true, labels: { color: '#9ca3af' } } } }
+            });
+
+            // Render Health Table
+            const healthBody = document.getElementById('healthBody');
+            healthBody.innerHTML = '';
+            data.health_stats.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-800 hover:bg-white/5 transition-colors';
+
+                const overfitColor = h.is_overfitting ? 'text-red-400 font-bold' : 'text-green-400';
+                const stabilityColor = h.is_unstable ? 'text-amber-400' : 'text-gray-300';
+
+                tr.innerHTML = `
+                    <td class="py-2 pl-2">${h.model_name}</td>
+                    <td class="py-2 text-right font-mono ${overfitColor}">${h.overfitting_score.toFixed(1)}%</td>
+                    <td class="py-2 text-right font-mono ${stabilityColor}">${h.stability_score.toFixed(2)}</td>
+                `;
+                healthBody.appendChild(tr);
+            });
+        }
+
+        // ═══════ NEW ANALYSIS RENDERING ═══════
+        function renderNewAnalysis(data) {
+            const chartColors = {
+                orange: 'rgba(249, 115, 22, 0.8)',
+                blue: 'rgba(59, 130, 246, 0.8)',
+                emerald: 'rgba(16, 185, 129, 0.8)',
+                purple: 'rgba(168, 85, 247, 0.8)',
+                pink: 'rgba(236, 72, 153, 0.8)',
+                amber: 'rgba(245, 158, 11, 0.8)',
+                cyan: 'rgba(0, 245, 255, 0.8)',
+                red: 'rgba(239, 68, 68, 0.8)',
+                teal: 'rgba(20, 184, 166, 0.8)',
+                indigo: 'rgba(99, 102, 241, 0.8)'
+            };
+            const colorArr = Object.values(chartColors);
+
+            // ── Neural vs Classical ──
+            const nvc = data.neural_vs_classical;
+            const nvcGroups = Object.keys(nvc);
+            const nvcDatasets = [
+                { label: 'Avg Accuracy (%)', data: nvcGroups.map(g => nvc[g].avg_accuracy), backgroundColor: 'rgba(0,245,255,0.7)' },
+                { label: 'Avg F1 (×100)', data: nvcGroups.map(g => nvc[g].avg_f1 * 100), backgroundColor: 'rgba(168,85,247,0.7)' },
+                { label: 'Avg AUC (×100)', data: nvcGroups.map(g => nvc[g].avg_auc * 100), backgroundColor: 'rgba(16,185,129,0.7)' }
+            ];
+            new Chart(document.getElementById('neuralVsClassicalChart'), {
+                type: 'bar',
+                data: { labels: nvcGroups.map(g => g.charAt(0).toUpperCase() + g.slice(1)), datasets: nvcDatasets },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top', labels: { color: '#9ca3af' } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                        y: { grid: { display: false }, ticks: { color: '#e5e7eb', font: { weight: '600' } } }
+                    }
+                }
+            });
+
+            // ── Convergence Doughnut ──
+            const conv = data.convergence_analysis || [];
+            const epochBuckets = {};
+            conv.forEach(c => {
+                const label = 'Epoch ' + c.best_epoch;
+                epochBuckets[label] = (epochBuckets[label] || 0) + 1;
+            });
+            new Chart(document.getElementById('convergenceDoughnut'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(epochBuckets),
+                    datasets: [{ data: Object.values(epochBuckets), backgroundColor: colorArr.slice(0, Object.keys(epochBuckets).length), borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { color: '#9ca3af', boxWidth: 12, padding: 8 } },
+                        title: { display: true, text: 'Best Epoch Distribution', color: '#9ca3af', font: { size: 11 } }
+                    }
+                }
+            });
+
+            // Convergence Table
+            const convBody = document.getElementById('convergenceBody');
+            convBody.innerHTML = '';
+            conv.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-800 hover:bg-white/5 transition-colors';
+                const rateColor = c.improvement_rate > 5 ? 'text-green-400' : 'text-amber-400';
+                const plateauColor = c.plateau_delta < 0.02 ? 'text-green-400' : 'text-red-400';
+                tr.innerHTML = `
+                    <td class="py-1.5 pr-2 truncate max-w-[120px]" title="${c.model_name}">${c.model_name}</td>
+                    <td class="py-1.5 text-right font-mono text-cyan">${c.best_epoch}/${c.total_epochs}</td>
+                    <td class="py-1.5 text-right font-mono ${rateColor}">${c.improvement_rate.toFixed(1)}</td>
+                    <td class="py-1.5 text-right font-mono ${plateauColor}">${c.plateau_delta.toFixed(4)}</td>
+                `;
+                convBody.appendChild(tr);
+            });
+
+            // ── Efficiency Frontier (Bubble) ──
+            const eff = data.efficiency_scores || [];
+            new Chart(document.getElementById('efficiencyChart'), {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Models',
+                        data: eff.map((e, i) => ({
+                            x: e.time_minutes,
+                            y: e.accuracy,
+                            r: Math.max(4, e.f1 * 15),
+                            model: e.model_name
+                        })),
+                        backgroundColor: eff.map((_, i) => colorArr[i % colorArr.length].replace('0.8', '0.6')),
+                        borderColor: eff.map((_, i) => colorArr[i % colorArr.length]),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const d = eff[ctx.dataIndex];
+                                    return [`${d.model_name}`, `Acc: ${d.accuracy}%`, `Time: ${d.time_minutes} min`, `F1: ${d.f1}`, `Eff: ${d.acc_per_minute}/min`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Training Time (min)', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                        y: { title: { display: true, text: 'Accuracy (%)', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } }
+                    }
+                }
+            });
+
+            // ── Accuracy vs F1 Scatter ──
+            const scatter = data.accuracy_vs_f1_scatter || [];
+            new Chart(document.getElementById('accVsF1Chart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Models',
+                        data: scatter.map(s => ({ x: s.accuracy, y: s.f1 * 100 })),
+                        backgroundColor: scatter.map((_, i) => colorArr[i % colorArr.length]),
+                        pointRadius: 7,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const s = scatter[ctx.dataIndex];
+                                    return `${s.model_name}: Acc=${s.accuracy}%, F1=${(s.f1 * 100).toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Accuracy (%)', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                        y: { title: { display: true, text: 'F1 Score (%)', color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } }
+                    }
+                }
+            });
+
+            // ── Model Rankings Table ──
+            const rankings = data.model_rankings || [];
+            const rankingsBody = document.getElementById('rankingsBody');
+            rankingsBody.innerHTML = '';
+            const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+            const rankBadge = (r) => {
+                if (medals[r]) return `<span class="text-lg">${medals[r]}</span>`;
+                if (r <= 5) return `<span class="text-green-400 font-bold">${r}</span>`;
+                if (r <= 10) return `<span class="text-amber-400">${r}</span>`;
+                return `<span class="text-gray-500">${r}</span>`;
+            };
+
+            rankings.forEach((m, idx) => {
+                const tr = document.createElement('tr');
+                const bgClass = idx === 0 ? 'bg-amber-500/10' : idx < 3 ? 'bg-white/[0.02]' : '';
+                tr.className = `border-b border-gray-800 hover:bg-white/5 transition-colors ${bgClass}`;
+                tr.innerHTML = `
+                    <td class="py-2 pl-2 font-medium truncate max-w-[140px]" title="${m.model_name}">${m.model_name}</td>
+                    <td class="py-2 text-center">${rankBadge(m.rank_acc)}</td>
+                    <td class="py-2 text-center">${rankBadge(m.rank_f1)}</td>
+                    <td class="py-2 text-center">${rankBadge(m.rank_auc)}</td>
+                    <td class="py-2 text-center">${rankBadge(m.rank_time)}</td>
+                    <td class="py-2 text-right font-mono ${m.avg_rank <= 5 ? 'text-green-400 font-bold' : 'text-gray-400'}">${m.avg_rank}</td>
+                `;
+                rankingsBody.appendChild(tr);
+            });
+
+            // ── Backbone Stability (Scatter) ──
+            const bbDist = data.backbone_distribution || {};
+            const bbNames = Object.keys(bbDist).sort();
+            const stabilityDatasets = bbNames.map((bb, idx) => {
+                const raw = bbDist[bb].raw || [];
+                const colors = ['#f472b6', '#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'];
+                const color = colors[idx % colors.length];
+                return {
+                    label: bb,
+                    data: raw.map(d => ({ x: idx, y: d.acc, classifier: d.classifier, backbone: bb })),
+                    backgroundColor: color,
+                    pointRadius: 7,
+                    pointHoverRadius: 10
+                };
+            });
+
+            new Chart(document.getElementById('backboneStabilityChart'), {
+                type: 'scatter',
+                data: { datasets: stabilityDatasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: -0.5,
+                            max: bbNames.length - 0.5,
+                            ticks: {
+                                callback: (val) => bbNames[val] || '',
+                                stepSize: 1,
+                                color: '#e5e7eb',
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 30,
+                                font: { size: 11, weight: '500' }
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            title: { display: true, text: 'Backbone', color: '#9ca3af', font: { size: 12 } }
+                        },
+                        y: {
+                            title: { display: true, text: 'Accuracy (%)', color: '#9ca3af' },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#64748b' },
+                            min: 0, max: 105
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { color: '#9ca3af', usePointStyle: true, padding: 12 } },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const d = items[0].raw;
+                                    return d.backbone;
+                                },
+                                label: (ctx) => {
+                                    const d = ctx.raw;
+                                    return [`Classifier: ${d.classifier}`, `Accuracy: ${d.y.toFixed(2)}%`];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ── Performance Heatmap (Grid) ──
+            const hmData = data.heatmap_data || [];
+            if (hmData.length > 0) {
+                const uniqueBB = [...new Set(hmData.map(d => d.y))].sort();
+                const uniqueCL = [...new Set(hmData.map(d => d.x))].sort();
+
+                const container = document.getElementById('heatmapContainer');
+                container.innerHTML = '';
+                container.style.display = 'grid';
+                container.style.gridTemplateColumns = `100px repeat(${uniqueCL.length}, 1fr)`;
+                container.style.gap = '4px';
+                container.style.padding = '10px';
+
+                // Header
+                container.appendChild(document.createElement('div'));
+                uniqueCL.forEach(cl => {
+                    const div = document.createElement('div');
+                    div.className = 'text-[10px] font-mono text-gray-400 flex items-end justify-center pb-1 text-center break-words';
+                    div.innerText = cl.replace('_', '\n');
+                    container.appendChild(div);
+                });
+
+                // Rows
+                uniqueBB.forEach(bb => {
+                    const label = document.createElement('div');
+                    label.className = 'text-[11px] text-gray-300 font-medium flex items-center pr-2 justify-end';
+                    label.innerText = bb;
+                    container.appendChild(label);
+
+                    uniqueCL.forEach(cl => {
+                        const match = hmData.find(d => d.y === bb && d.x === cl);
+                        const cell = document.createElement('div');
+                        cell.className = 'h-8 rounded cursor-pointer transition-all hover:scale-110 hover:z-10 relative group';
+                        if (match) {
+                            const val = match.v;
+                            let hue = Math.max(0, (val - 20) * 1.5);
+                            cell.style.backgroundColor = `hsla(${hue}, 70%, 45%, 0.85)`;
+                            cell.title = `${bb} + ${cl}: ${val}%`;
+                            cell.innerHTML = `<div class="opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white shadow-sm pointer-events-none">${val.toFixed(0)}</div>`;
+                        } else {
+                            cell.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                        }
+                        container.appendChild(cell);
+                    });
+                });
+            }
+        }
+
+        function renderTable(data) {
+            const rawData = data.raw_data;
+            let currentPage = 1;
+            let perPage = 10;
+            let filteredData = [...rawData];
+
+            // Populate filter dropdowns
+            const bbFilter = document.getElementById('metricsBackboneFilter');
+            const clFilter = document.getElementById('metricsClassifierFilter');
+            const perPageSelect = document.getElementById('metricsPerPage');
+
+            const uniqueBB = [...new Set(rawData.map(r => r.backbone))].sort();
+            const uniqueCL = [...new Set(rawData.map(r => r.classifier))].sort();
+
+            uniqueBB.forEach(bb => {
+                const opt = document.createElement('option');
+                opt.value = bb; opt.textContent = bb;
+                bbFilter.appendChild(opt);
+            });
+            uniqueCL.forEach(cl => {
+                const opt = document.createElement('option');
+                opt.value = cl; opt.textContent = cl;
+                clFilter.appendChild(opt);
+            });
+
+            function applyFilters() {
+                const bbVal = bbFilter.value;
+                const clVal = clFilter.value;
+                filteredData = rawData.filter(r => {
+                    if (bbVal !== 'all' && r.backbone !== bbVal) return false;
+                    if (clVal !== 'all' && r.classifier !== clVal) return false;
+                    return true;
+                });
+                currentPage = 1;
+                renderPage();
+            }
+
+            function renderPage() {
+                const tbody = document.getElementById('metricsBody');
+                tbody.innerHTML = '';
+
+                const showAll = perPage === 'all';
+                const total = filteredData.length;
+                const totalPages = showAll ? 1 : Math.ceil(total / perPage);
+                const start = showAll ? 0 : (currentPage - 1) * perPage;
+                const end = showAll ? total : Math.min(start + perPage, total);
+                const pageData = filteredData.slice(start, end);
+
+                pageData.forEach(row => {
+                    const acc = row.classifier_metrics?.test_accuracy || 0;
+                    const f1 = row.classifier_metrics?.f1 || 0;
+                    const top5 = row.classifier_metrics?.top5_accuracy || 0;
+                    const auc = row.classifier_metrics?.auc_roc || 0;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td class="font-semibold">${row.model_name}</td>
+                    <td>${row.backbone}</td>
+                    <td>${row.classifier}</td>
+                    <td class="text-cyan font-mono">${acc.toFixed(2)}%</td>
+                    <td class="text-teal-400 font-mono">${top5.toFixed(2)}%</td>
+                    <td class="text-purple font-mono">${(f1 * 100).toFixed(2)}%</td>
+                    <td class="text-amber font-mono">${auc.toFixed(4)}</td>
+                    <td class="font-mono">${row.training_time_seconds.toFixed(1)}</td>
+                `;
+                    tbody.appendChild(tr);
+                });
+
+                // Info text
+                document.getElementById('metricsInfo').textContent =
+                    `Showing ${start + 1}–${end} of ${total} models`;
+
+                // Pagination controls
+                const pagDiv = document.getElementById('metricsPagination');
+                pagDiv.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                const mkBtn = (label, page, active = false, disabled = false) => {
+                    const btn = document.createElement('button');
+                    btn.textContent = label;
+                    btn.disabled = disabled;
+                    btn.className = active
+                        ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan/20 text-cyan border border-cyan/30'
+                        : 'px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors' +
+                        (disabled ? ' opacity-30 cursor-not-allowed' : '');
+                    if (!disabled) btn.addEventListener('click', () => { currentPage = page; renderPage(); });
+                    return btn;
+                };
+
+                pagDiv.appendChild(mkBtn('‹ Prev', currentPage - 1, false, currentPage === 1));
+
+                // Show limited page buttons
+                let startP = Math.max(1, currentPage - 2);
+                let endP = Math.min(totalPages, startP + 4);
+                startP = Math.max(1, endP - 4);
+
+                if (startP > 1) {
+                    pagDiv.appendChild(mkBtn('1', 1));
+                    if (startP > 2) {
+                        const dots = document.createElement('span');
+                        dots.className = 'px-1 text-gray-600 text-xs'; dots.textContent = '…';
+                        pagDiv.appendChild(dots);
+                    }
+                }
+                for (let p = startP; p <= endP; p++) {
+                    pagDiv.appendChild(mkBtn(p.toString(), p, p === currentPage));
+                }
+                if (endP < totalPages) {
+                    if (endP < totalPages - 1) {
+                        const dots = document.createElement('span');
+                        dots.className = 'px-1 text-gray-600 text-xs'; dots.textContent = '…';
+                        pagDiv.appendChild(dots);
+                    }
+                    pagDiv.appendChild(mkBtn(totalPages.toString(), totalPages));
+                }
+
+                pagDiv.appendChild(mkBtn('Next ›', currentPage + 1, false, currentPage === totalPages));
+            }
+
+            bbFilter.addEventListener('change', applyFilters);
+            clFilter.addEventListener('change', applyFilters);
+            perPageSelect.addEventListener('change', () => {
+                const val = perPageSelect.value;
+                perPage = val === 'all' ? 'all' : parseInt(val);
+                currentPage = 1;
+                renderPage();
+            });
+
+            renderPage();
+        }
+    });
+</script>
+{% endblock %}

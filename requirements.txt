@@ -1,0 +1,10 @@
+flask
+opencv-python
+torch
+torchvision
+joblib
+scikit-learn
+numpy
+pandas
+pillow
+psutil

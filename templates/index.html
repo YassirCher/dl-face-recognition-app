@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Live Recognition</h1>
+            <p class="text-gray-500 mt-1">Real-time face detection and identification</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="fpsCounter" class="stat-card px-4 py-2">
+                <span class="text-xs text-gray-500 uppercase tracking-wide">FPS</span>
+                <span id="fpsValue" class="text-2xl font-bold text-cyan ml-2 font-mono">--</span>
+            </div>
+            <div id="latencyCounter" class="stat-card px-4 py-2">
+                <span class="text-xs text-gray-500 uppercase tracking-wide">Latency</span>
+                <span id="latencyValue" class="text-2xl font-bold text-amber ml-2 font-mono">--</span>
+                <span class="text-xs text-gray-500">ms</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        <!-- Video Feed Section -->
+        <div class="xl:col-span-2 space-y-6">
+
+            <!-- Main Video Player -->
+            <div class="video-container">
+                <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Live Video Feed" class="w-full">
+
+                <!-- Video Overlay Stats -->
+                <div class="video-overlay">
+                    <div class="flex items-center gap-4">
+                        <div class="text-xs text-gray-400">
+                            <span class="text-white font-semibold" id="modelDisplay">No Model</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="detectionCount" class="text-xs bg-black/50 px-2 py-1 rounded">Faces: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confidence Histogram (Real-time) -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i data-lucide="bar-chart-2" class="inline w-5 h-5 text-purple mr-2"></i>
+                    Live Confidence Distribution
+                </h3>
+                <div class="chart-container h-48">
+                    <canvas id="confidenceHistogram"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="space-y-6">
+
+            <!-- Current Status -->
+            <div class="glass-panel rounded-xl p-6 neon-border">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="cpu" class="w-5 h-5 text-cyan"></i>
+                    Active Configuration
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-700/50">
+                        <span class="text-gray-500">Backbone</span>
+                        <span id="current-backbone" class="font-mono text-cyan font-semibold">None</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-700/50">
+                        <span class="text-gray-500">Classifier</span>
+                        <span id="current-classifier" class="font-mono text-purple font-semibold">None</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">Status</span>
+                        <span id="system-status" class="text-green font-semibold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Ready
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Upload -->
+            <div class="glass-panel rounded-xl p-6">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="upload" class="w-5 h-5 text-green"></i>
+                    Video Source
+                </h2>
+                <div class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-cyan transition-colors cursor-pointer"
+                        onclick="document.getElementById('video-upload').click()">
+                        <i data-lucide="film" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                        <p class="text-sm text-gray-400">Click to upload video</p>
+                        <p class="text-xs text-gray-600 mt-1">MP4, AVI, MOV supported</p>
+                    </div>
+                    <input type="file" id="video-upload" accept="video/*" class="hidden">
+                    <button id="upload-btn" class="btn-primary w-full flex items-center justify-center gap-2">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                        <span id="upload-text">Upload & Play</span>
+                    </button>
+
+                    <!-- Replay Button (shown when video ends) -->
+                    <button id="replay-btn"
+                        class="hidden w-full py-2 px-4 bg-purple/20 text-purple border border-purple/30 rounded-lg flex items-center justify-center gap-2 hover:bg-purple/30 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Replay Video</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Detection Summary (shown when video ends) -->
+            <div id="detection-summary" class="glass-panel rounded-xl p-6 hidden">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-cyan"></i>
+                    Detection Results
+                </h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-700/50">
+                        <span class="text-gray-500">Total Frames</span>
+                        <span id="summary-frames" class="font-mono text-white">0</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-700/50">
+                        <span class="text-gray-500">Frames with Faces</span>
+                        <span id="summary-face-frames" class="font-mono text-green">0</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-700/50">
+                        <span class="text-gray-500">Detection Rate</span>
+                        <span id="summary-detection-rate" class="font-mono text-cyan">0%</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-700/50">
+                        <span class="text-gray-500">Total Detections</span>
+                        <span id="summary-total" class="font-mono text-purple">0</span>
+                    </div>
+
+                    <!-- Detected Individuals -->
+                    <div class="mt-4">
+                        <h3 class="text-sm text-gray-400 mb-3">Detected Individuals</h3>
+                        <div id="detected-faces-list" class="space-y-2 max-h-48 overflow-y-auto">
+                            <!-- Face items will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Selection -->
+            <div class="glass-panel rounded-xl p-6">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-5 h-5 text-amber"></i>
+                    Model Configuration
+                </h2>
+
+                <form id="model-form" class="space-y-4">
+                    <div>
+                        <label for="backbone-select" class="block text-sm text-gray-500 mb-2">Backbone
+                            Architecture</label>
+                        <select id="backbone-select">
+                            <option value="" disabled selected>Select Backbone</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="classifier-select" class="block text-sm text-gray-500 mb-2">Classifier Head</label>
+                        <select id="classifier-select" disabled>
+                            <option value="" disabled selected>Select Classifier</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="switch-btn"
+                        class="btn-primary w-full flex items-center justify-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                        <span id="btn-text">Apply Configuration</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tips -->
+            <div class="bg-cyan-glow border border-cyan/20 rounded-xl p-4">
+                <h3 class="text-cyan font-semibold text-sm mb-2 flex items-center gap-2">
+                    <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                    Pro Tip
+                </h3>
+                <p class="text-gray-400 text-sm">
+                    Upload a video file and switch models on-the-fly. The inference runs in real-time with automatic
+                    face detection.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Lucide icons for this page
+    lucide.createIcons();
+
+    // Live Confidence Histogram
+    let confidenceChart = null;
+    const confidenceData = Array(10).fill(0); // 10 bins: 0-10, 10-20, ..., 90-100
+
+    function initConfidenceHistogram() {
+        const ctx = document.getElementById('confidenceHistogram').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.8)');
+        gradient.addColorStop(1, 'rgba(0, 245, 255, 0.2)');
+
+        confidenceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'],
+                datasets: [{
+                    label: 'Detections',
+                    data: confidenceData,
+                    backgroundColor: gradient,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#64748b' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Poll inference stats
+    async function fetchInferenceStats() {
+        try {
+            const res = await fetch('/api/inference_stats');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('fpsValue').textContent = data.fps.toFixed(1);
+                document.getElementById('latencyValue').textContent = data.latency.toFixed(0);
+                document.getElementById('detectionCount').textContent = `Faces: ${data.face_count}`;
+
+                // Update histogram
+                if (confidenceChart) {
+                    confidenceChart.data.datasets[0].data = data.confidence_histogram;
+                    confidenceChart.update('none');
+                }
+            }
+        } catch (e) { /* Silently fail */ }
+    }
+
+    // Poll detection summary to check if video ended
+    async function fetchDetectionSummary() {
+        try {
+            const res = await fetch('/api/detection_summary');
+            if (res.ok) {
+                const data = await res.json();
+                const summaryPanel = document.getElementById('detection-summary');
+                const replayBtn = document.getElementById('replay-btn');
+
+                if (data.video_ended) {
+                    // Show replay button and detection summary
+                    replayBtn.classList.remove('hidden');
+                    summaryPanel.classList.remove('hidden');
+
+                    // Update summary stats
+                    document.getElementById('summary-frames').textContent = data.total_frames;
+                    document.getElementById('summary-face-frames').textContent = data.frames_with_faces;
+                    document.getElementById('summary-detection-rate').textContent = data.detection_percentage.toFixed(1) + '%';
+                    document.getElementById('summary-total').textContent = data.total_detections;
+
+                    // Update detected faces list
+                    const facesList = document.getElementById('detected-faces-list');
+                    facesList.innerHTML = '';
+                    data.detections.forEach((d, i) => {
+                        const item = document.createElement('div');
+                        item.className = 'flex justify-between items-center p-2 bg-gray-800/50 rounded-lg';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-xs font-bold text-white">${i + 1}</span>
+                                <span class="text-white font-medium">${d.name}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-cyan font-mono">${d.count}</span>
+                                <span class="text-gray-500 text-xs ml-1">(${d.percentage.toFixed(1)}%)</span>
+                            </div>
+                        `;
+                        facesList.appendChild(item);
+                    });
+                    lucide.createIcons();
+                } else {
+                    replayBtn.classList.add('hidden');
+                    summaryPanel.classList.add('hidden');
+                }
+            }
+        } catch (e) { /* Silently fail */ }
+    }
+
+    // Replay button handler
+    document.getElementById('replay-btn').addEventListener('click', async () => {
+        try {
+            const res = await fetch('/api/replay_video', { method: 'POST' });
+            if (res.ok) {
+                // Hide summary and replay button
+                document.getElementById('detection-summary').classList.add('hidden');
+                document.getElementById('replay-btn').classList.add('hidden');
+                // Refresh video feed
+                const videoImg = document.getElementById('videoFeed');
+                videoImg.src = videoImg.src.split('?')[0] + '?t=' + Date.now();
+            }
+        } catch (e) { console.error('Replay failed:', e); }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initConfidenceHistogram();
+        setInterval(fetchInferenceStats, 500);
+        setInterval(fetchDetectionSummary, 1000);
+    });
+</script>
+{% endblock %}
