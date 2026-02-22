@@ -18,33 +18,36 @@ We conducted an extensive benchmarking study, training and evaluating **90 diffe
 - **Backbone Architectures:** VGG16, ResNet50/101, EfficientNetB0/B3, DenseNet121, MobileNetV3, ConvNeXt Tiny, Vision Transformer (ViT-S/B), Swin Transformer.
 - **Classifier Heads:** Simple Linear, MLP (Deep Neural), SVM (Linear/RBF), Random Forest, XGBoost, Attention-based heads.
 
+## 📁 Project Assets
+- **Presentation:** [Facial Recognition Presentation (.pptx)](Facial%20Recognition%20CHERGUI%20Yassir%20ZOUITNI%20Salaheddine.pptx)
+
 ## 📸 App Showcase
 
 ### 🔍 Live Inference & Real-time Analysis
 The inference engine features real-time face detection (via MediaPipe/OpenCV) and classification with live FPS and latency monitoring.
 ![Main Page](screenshots/mainpage.png)
-![Inference Analysis](screenshots/inference%20analysis.png)
+![Inference Analysis](screenshots/inference_analysis.png)
 
 ### 📊 Comprehensive Analysis Dashboard
 The integrated dashboard provides deep-dive analytics for all 90 models, allowing for side-by-side comparison of performance metrics and training health.
 
 #### Analysis Overview
-![Analysis Overview](screenshots/analysis%20page%20part%201.png)
+![Analysis Overview](screenshots/analysis_page_part_1.png)
 
 #### Model Rankings
-![Model Rankings](screenshots/analysis%20page%20part%202.png)
+![Model Rankings](screenshots/analysis_page_part_2.png)
 
 #### Efficiency Frontier
-![Efficiency Frontier](screenshots/analysis%20page%20part%203.png)
+![Efficiency Frontier](screenshots/analysis_page_part_3.png)
 
 #### Backbone Stability
-![Backbone Stability](screenshots/analysis%20page%20part%204.png)
+![Backbone Stability](screenshots/analysis_page_part_4.png)
 
 #### Neural vs Classical Comparison
-![Neural vs Classical](screenshots/analysis%20page%20part%205.png)
+![Neural vs Classical](screenshots/analysis_page_part_5.png)
 
 #### Performance Heatmap
-![Performance Heatmap](screenshots/analysis%20page%20part%206.png)
+![Performance Heatmap](screenshots/analysis_page_part_6.png)
 
 ## ✨ Key Features
 - **Real-time Inference:** Process live video or uploaded files with on-the-fly model switching.
